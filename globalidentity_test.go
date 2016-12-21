@@ -24,7 +24,7 @@ func TestGlobalIdentityManager_ValidateApplication(t *testing.T) {
 	httpmock.RegisterResponder("POST", validateApplicationUrl, httpmock.NewStringResponder(http.StatusInternalServerError, ""))
 
 	gim := New("test", globalApplicationUrl)
-	_, err := gim.ValidateApplication("", "", "", "")
+	_, err := gim.ValidateApplication("", "", "")
 	if err == nil {
 		t.FailNow()
 	}
@@ -37,7 +37,7 @@ func TestGlobalIdentityManager_ValidateApplication(t *testing.T) {
 	httpmock.RegisterResponder("POST", validateApplicationUrl, httpmock.NewStringResponder(http.StatusOK, string(okResponse)))
 
 	gim = New("test", globalApplicationUrl)
-	ok, err := gim.ValidateApplication("", "", "", "")
+	ok, err := gim.ValidateApplication("", "", "")
 	if !ok || err != nil {
 		t.FailNow()
 	}
@@ -49,7 +49,7 @@ func TestGlobalIdentityManager_ValidateApplication(t *testing.T) {
 
 	httpmock.RegisterResponder("POST", validateApplicationUrl, httpmock.NewStringResponder(http.StatusOK, string(notOkResponse)))
 
-	ok, err = gim.ValidateApplication("", "", "", "")
+	ok, err = gim.ValidateApplication("", "", "")
 	if ok {
 		t.FailNow()
 	}
@@ -60,7 +60,7 @@ func TestGlobalIdentityManager_ValidateApplication(t *testing.T) {
 
 	httpmock.RegisterResponder("POST", validateApplicationUrl, httpmock.NewStringResponder(http.StatusOK, "{\"saa}"))
 
-	_, err = gim.ValidateApplication("", "", "", "")
+	_, err = gim.ValidateApplication("", "", "")
 
 	if err == nil {
 		t.FailNow()
@@ -95,18 +95,23 @@ func TestGlobalIdentityManager_AuthenticateUser(t *testing.T) {
 		t.FailNow()
 	}
 
+	oprep := []loginOperationReport{
+		{Message: "error1", Field: "login"},
+		{Message: "error2", Field: "login"},
+	}
 	notOkResponse, _ := json.Marshal(&authenticateUserResponse{
 		Success:                  false,
 		AuthenticationToken:      "banana",
 		TokenExpirationInMinutes: 1,
 		UserKey:                  "user",
 		Name:                     "user",
+		OperationReport:          oprep,
 	})
 
 	httpmock.RegisterResponder("POST", authenticateUserUrl, httpmock.NewStringResponder(http.StatusOK, string(notOkResponse)))
 
 	_, err = gim.AuthenticateUser("", "")
-	if err == nil {
+	if err.Error() != `[]string{"error1", "error2"}` {
 		t.FailNow()
 	}
 
